@@ -1,3 +1,15 @@
+# 流程
+conda activate scenicNL
+proxy_on
+export CUDA_VISIBLE_DEVICES=4,5,6,7
+export OPENAI_API_KEY=""
+export OPENAI_API_BASE="https://api.qhaigc.net/v1"
+gen_scenic --query_path /home/zzy/ScenicNL/examples --output-path /home/zzy/ScenicNL/output --model gpt-3.5-turbo-0613 --llm_prompt_type predict_few_shot
+
+
+
+
+
 # ScenicNL
 
 The Compound AI System that can generate [Scenic](https://github.com/BerkeleyLearnVerify/Scenic) programs from Crash Report descriptions.
