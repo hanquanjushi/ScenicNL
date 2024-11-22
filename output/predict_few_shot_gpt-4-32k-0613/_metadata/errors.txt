@@ -1,0 +1,2 @@
+0 - 0-0 compile error: invalid syntax
+0 - 0-0 execute error: invalid syntax

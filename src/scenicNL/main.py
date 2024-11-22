@@ -212,7 +212,10 @@ def main(
         os.mkdir(text_path)
     if not os.path.isdir(result_path):
         os.mkdir(result_path)
+    print(query_path)
+    print(1)
     if os.path.isdir(query_path):
+        print(1)
         file_list = os.listdir(query_path)
         file_list = file_list[offset:count+offset] if count else file_list[offset:]
         for filename in file_list:

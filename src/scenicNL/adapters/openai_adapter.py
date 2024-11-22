@@ -28,6 +28,9 @@ class OpenAIAdapter(ModelAdapter):
         openai.api_key = os.getenv("OPENAI_API_KEY")
         if os.getenv("OPENAI_ORGANIZATION") and len(os.getenv("OPENAI_ORGANIZATION")) > 0:
             openai.organization = os.getenv("OPENAI_ORGANIZATION")
+        # 设置自定义 API URL
+        if os.getenv("OPENAI_API_BASE"):
+            openai.api_base = os.getenv("OPENAI_API_BASE")
         self.model = model
         self.index = VectorDB(index_name='scenic-programs')
 

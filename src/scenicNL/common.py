@@ -216,7 +216,9 @@ def get_tot_nl_prompt(model_input) -> str:
          return prompt
 
 
-class VectorDB():
+from pinecone import Pinecone, ServerlessSpec
+
+class VectorDB:
     def __init__(
             self,
             index_name: str = 'scenic-programs',
@@ -244,43 +246,51 @@ class VectorDB():
 
     def _pinecone_init(
         self,
-        index_name : str,
-        dimension : int,
-        verbose : bool,
-    ) -> pinecone.Index:
-        api_key = os.getenv('PINECONE_API_KEY')
-        pinecone.init(
-            api_key=api_key,
-            environment='gcp-starter',
-        )
+        index_name: str,
+        dimension: int,
+        verbose: bool,
+    ) -> Pinecone.Index:
+        # api_key = os.getenv('PINECONE_API_KEY')  # 这里获取环境变量
 
-        active_indexes = pinecone.list_indexes()
+        # if not api_key:
+        #     raise ValueError("Pinecone API key is not set. Please set the PINECONE_API_KEY environment variable or provide it explicitly.")
 
-        if index_name not in active_indexes:
-            pinecone.create_index(
-                name=index_name, 
-                metric='dotproduct',
-                dimension=dimension,
+        # 如果需要在代码中显式设置 API 密钥，可以直接替换上面的获取方式
+        api_key = "pcsk_gHxda_Noo9fHyo28mo64W2JW4znc9HEWThLz3WwVaZW6QSbKYiQhJmF3WEoAVogbjwTB"  # 直接在这里设置你的 API 密钥
+
+        pc = Pinecone(api_key=api_key)
+
+        if index_name not in pc.list_indexes().names():
+            pc.create_index(
+                name=index_name,
+                dimension=1536,
+                metric="cosine",
+                spec={
+                    "serverless": {
+                        "cloud": "aws",          # 云提供商
+                        "region": "us-east-1"    # 区域（根据你的计划）
+                    }
+                }
             )
 
-        index = pinecone.Index(index_name)
+        index = pc.Index(index_name)
         if verbose:
             print(f"Index statistics: \n{index.describe_index_stats()}")
         return index
 
-    # We will use mean pooling to accumulate the attention weights
+    # Mean pooling for the embeddings
     def _mean_pooling(
             self,
             model_output,
             attention_mask,
         ) -> torch.Tensor:
-        token_embeddings = model_output[0] #First element of model_output contains all token embeddings
+        token_embeddings = model_output[0]  # First element of model_output contains all token embeddings
         input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
         return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
 
     def get_embedding(
         self,
-        text : str,
+        text: str,
     ) -> List[float]:
         encoded_input = self.tokenizer(text, padding=True, truncation=True, return_tensors='pt')
 
@@ -290,37 +300,40 @@ class VectorDB():
         embeddings = self._mean_pooling(model_output, encoded_input['attention_mask'].to(self.device))
         normalized_embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
         return normalized_embeddings.cpu().numpy().tolist()[0]
-    
+
     def upsert(
         self,
-        docs : list,
-        index : pinecone.Index,
-        start : int = 0
+        docs: List[str],
+        index: Pinecone.Index,
+        start: int = 0
     ) -> None:
+        """
+        Upsert documents into the Pinecone index.
+        """
         vectors = []
-        for i in range(len(docs)):
-
-            doc = docs[i]
+        for i, doc in enumerate(docs):
             id_batch = str(i + start)
             embedding = self.get_embedding(doc)
-            metadata = {'text' : doc}
+            metadata = {'text': doc}
             vectors.append((id_batch, embedding, metadata))
 
         if len(vectors) > 0:
             index.upsert(vectors)
 
-
     def query(
         self,
-        query_or_queries : Union[str, List[str]],
-        top_k : int = 3,
+        query_or_queries: Union[str, List[str]],
+        top_k: int = 3,
     ) -> Optional[List[str]]:
+        """
+        Query the Pinecone index with the input text or list of texts.
+        """
         if isinstance(query_or_queries, str):
             query_or_queries = [query_or_queries]
-        
+
         query_embeddings = [self.get_embedding(query) for query in query_or_queries]
         results_dict = self.index.query(query_embeddings, top_k=top_k, include_metadata=True)
-        passages = [results['metadata']['text'] for results in results_dict['matches']]
+        passages = [result['metadata']['text'] for result in results_dict['matches']]
         if len(passages) < top_k:
             return None
         return passages

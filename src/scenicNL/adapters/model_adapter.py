@@ -116,7 +116,7 @@ class ModelAdapter(abc.ABC):
                             max_length_tokens=max_tokens,
                             prompt_type=prompt_type,
                             verbose=verbose,
-                            max_retries=max_retries,
+                            #max_retries=max_retries,
                         )
                         if prompt_type.value == LLMPromptType.PREDICT_PYTHON_API.value:
                             api_input = ModelInput(model_input.examples, prediction)
