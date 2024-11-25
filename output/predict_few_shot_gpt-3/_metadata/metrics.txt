@@ -1,4 +1,4 @@
-Compile rate: 33.33
-Execute rate: 33.33
-API error rate: 66.67
-Secs per program: 0.00394
+Compile rate: 50.0
+Execute rate: 50.0
+API error rate: 0.0
+Secs per program: 53.34851
